@@ -1,0 +1,11 @@
+[package]
+name = "dusk-tlv"
+version = "1.0.0"
+authors = ["Victor Lopez <victor@dusk.network>"]
+edition = "2018"
+homepage = "https://dusk-network.github.io/dusk-tlv/dusk_tlv/index.html"
+repository = "https://github.com/dusk-network/dusk-tlv/"
+readme = "README.md"
+license = "MPL-2.0"
+
+[dependencies]
