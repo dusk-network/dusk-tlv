@@ -83,6 +83,22 @@ where
 
         Ok(usize::from_le_bytes(n))
     }
+
+    /// Read a list of serializable items from the provided reader
+    pub fn read_list<L: From<Vec<u8>>>(&mut self) -> Result<Vec<L>, io::Error> {
+        let buf = self.next().ok_or(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        ))??;
+
+        let mut list = vec![];
+        for item in TlvReader::new(buf.as_slice()) {
+            let item = item?;
+            list.push(L::from(item));
+        }
+
+        Ok(list)
+    }
 }
 
 impl<R> From<R> for TlvReader<R>
@@ -187,6 +203,41 @@ mod tests {
 
         let mut tlv_reader = TlvReader::new(cursor);
         let output = tlv_reader.read_usize().unwrap();
+
+        assert_eq!(input, output);
+    }
+
+    #[test]
+    fn tlv_reader_list() {
+        let cursor = Cursor::new(Vec::<u8>::new());
+
+        let input = vec![2558usize, 21, 37, 2009];
+        let mut tlv_writer = TlvWriter::new(cursor);
+
+        tlv_writer
+            .write_list(
+                input
+                    .iter()
+                    .map(|i| i.to_le_bytes())
+                    .collect::<Vec<[u8; 8]>>()
+                    .as_slice(),
+            )
+            .unwrap();
+
+        let mut cursor = tlv_writer.into_inner();
+        cursor.set_position(0);
+
+        let mut tlv_reader = TlvReader::new(cursor);
+        let output: Vec<usize> = tlv_reader
+            .read_list::<Vec<u8>>()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                let mut n = [0x00u8; 8];
+                n.copy_from_slice(i.as_slice());
+                usize::from_le_bytes(n)
+            })
+            .collect();
 
         assert_eq!(input, output);
     }

@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 /// Optionally consumes an implementation of [`io::Write`], and provides an adapter to convert
 /// slices of bytes to TLV format, and output the result to the writer.
@@ -60,6 +60,19 @@ where
         let n = n.to_le_bytes();
 
         TlvWriter::bytes_to_writer(&mut self.writer, &n[..])
+    }
+
+    /// Write a list of serializable items
+    pub fn write_list<L: AsRef<[u8]>>(&mut self, list: &[L]) -> Result<usize, io::Error> {
+        let buf: Vec<u8> = vec![];
+        let mut writer = TlvWriter::new(buf);
+
+        for item in list {
+            writer.write(item.as_ref())?;
+        }
+
+        let buf = writer.into_inner();
+        self.write(buf.as_slice())
     }
 }
 
