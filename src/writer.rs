@@ -54,6 +54,13 @@ where
         writer.write(&len[..len_mask as usize])?;
         writer.write(buf)
     }
+
+    /// Append the provided usize to the writer in TLV format
+    pub fn write_usize(&mut self, n: usize) -> Result<usize, io::Error> {
+        let n = n.to_le_bytes();
+
+        TlvWriter::bytes_to_writer(&mut self.writer, &n[..])
+    }
 }
 
 impl<W> io::Write for TlvWriter<W>

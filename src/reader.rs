@@ -74,6 +74,15 @@ where
 
         Ok(tlv_len)
     }
+
+    /// Read a TLV format serialized `usize` from the provided reader
+    pub fn read_usize(&mut self) -> Result<usize, io::Error> {
+        let mut n = 0usize.to_le_bytes();
+
+        TlvReader::read_slice(&mut self.reader, &mut n[..])?;
+
+        Ok(usize::from_le_bytes(n))
+    }
 }
 
 impl<R> From<R> for TlvReader<R>
@@ -162,5 +171,23 @@ mod tests {
 
         let fetch_vec = tlv_reader.next().unwrap().unwrap();
         assert_eq!(buf_other, fetch_vec);
+    }
+
+    #[test]
+    fn tlv_reader_usize() {
+        let cursor = Cursor::new(Vec::<u8>::new());
+
+        let input = 2533;
+        let mut tlv_writer = TlvWriter::new(cursor);
+
+        tlv_writer.write_usize(input).unwrap();
+
+        let mut cursor = tlv_writer.into_inner();
+        cursor.set_position(0);
+
+        let mut tlv_reader = TlvReader::new(cursor);
+        let output = tlv_reader.read_usize().unwrap();
+
+        assert_eq!(input, output);
     }
 }
