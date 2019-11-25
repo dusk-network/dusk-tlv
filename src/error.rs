@@ -2,7 +2,8 @@ use std::error;
 use std::fmt;
 use std::io;
 
-use serde::de::Error as SerdeError;
+use serde::de::Error as SerdeDeError;
+use serde::ser::Error as SerdeSerError;
 
 macro_rules! from_error {
     ($t:ty, $id:ident) => {
@@ -37,7 +38,19 @@ impl error::Error for Error {
     }
 }
 
-impl SerdeError for Error {
+impl SerdeDeError for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: fmt::Display,
+    {
+        Error::Io(io::Error::new(
+            io::ErrorKind::Other,
+            format!("Serde error: {}", msg),
+        ))
+    }
+}
+
+impl SerdeSerError for Error {
     fn custom<T>(msg: T) -> Self
     where
         T: fmt::Display,

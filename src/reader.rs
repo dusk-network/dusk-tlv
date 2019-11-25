@@ -2,6 +2,8 @@ use crate::Error;
 
 use std::io::{self, Read};
 
+use serde::de::{DeserializeSeed, Deserializer, SeqAccess, Visitor};
+
 /// Optionally consumes an implementation of [`Read`], and fetch n payloads in TLV format from it.
 ///
 /// The payloads can be fetched either via [`TlvReader::reader_to_tlv_len`], or via the iterator
@@ -77,15 +79,6 @@ where
         Ok(tlv_len)
     }
 
-    /// Read a TLV format serialized `usize` from the provided reader
-    pub fn read_usize(&mut self) -> Result<usize, Error> {
-        let mut n = 0usize.to_le_bytes();
-
-        TlvReader::read_slice(&mut self.reader, &mut n[..])?;
-
-        Ok(usize::from_le_bytes(n))
-    }
-
     /// Read a list of serializable items from the provided reader
     pub fn read_list<L: From<Vec<u8>>>(&mut self) -> Result<Vec<L>, Error> {
         let buf = self.next().ok_or(Error::Io(io::Error::new(
@@ -153,9 +146,347 @@ where
     }
 }
 
+impl<'de, R> SeqAccess<'de> for TlvReader<R>
+where
+    R: io::Read,
+{
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, _seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        unimplemented!()
+    }
+}
+
+impl<'de, R> Deserializer<'de> for TlvReader<R>
+where
+    R: io::Read,
+{
+    type Error = Error;
+
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unimplemented!()
+    }
+
+    fn deserialize_bool<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_bool(if buf[0] == 0 { false } else { true })
+    }
+
+    fn deserialize_i8<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_i8(i8::from_le_bytes(buf))
+    }
+
+    fn deserialize_i16<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 2];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_i16(i16::from_le_bytes(buf))
+    }
+
+    fn deserialize_i32<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 4];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_i32(i32::from_le_bytes(buf))
+    }
+
+    fn deserialize_i64<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 8];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_i64(i64::from_le_bytes(buf))
+    }
+
+    fn deserialize_u8<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 1];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_u8(u8::from_le_bytes(buf))
+    }
+
+    fn deserialize_u16<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 2];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_u16(u16::from_le_bytes(buf))
+    }
+
+    fn deserialize_u32<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 4];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_u32(u32::from_le_bytes(buf))
+    }
+
+    fn deserialize_u64<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 8];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_u64(u64::from_le_bytes(buf))
+    }
+
+    fn deserialize_f32<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 4];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_f32(f32::from_le_bytes(buf))
+    }
+
+    fn deserialize_f64<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 8];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_f64(f64::from_le_bytes(buf))
+    }
+
+    fn deserialize_char<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0x00u8; 1];
+        TlvReader::read_slice(&mut self.reader, &mut buf)?;
+        visitor.visit_char(char::from(buf[0]))
+    }
+
+    fn deserialize_str<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unsafe {
+            self.next()
+                .unwrap_or(Err(Error::Io(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "It was not possible to deserialize the text",
+                ))))
+                .and_then(|bytes| {
+                    visitor.visit_str(std::str::from_utf8_unchecked(bytes.as_slice()))
+                })
+        }
+    }
+
+    fn deserialize_string<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unsafe {
+            self.next()
+                .unwrap_or(Err(Error::Io(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "It was not possible to deserialize the text",
+                ))))
+                .and_then(|bytes| visitor.visit_string(String::from_utf8_unchecked(bytes)))
+        }
+    }
+
+    fn deserialize_bytes<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.next()
+            .unwrap_or(Err(Error::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "It was not possible to deserialize the text",
+            ))))
+            .and_then(|bytes| visitor.visit_bytes(bytes.as_slice()))
+    }
+
+    fn deserialize_byte_buf<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.next()
+            .unwrap_or(Err(Error::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "It was not possible to deserialize the text",
+            ))))
+            .and_then(|bytes| visitor.visit_byte_buf(bytes))
+    }
+
+    fn deserialize_option<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.next()
+            .unwrap_or(Err(Error::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "It was not possible to deserialize the text",
+            ))))
+            .and_then(|bytes| {
+                if !bytes.is_empty() {
+                    visitor.visit_byte_buf(bytes)
+                } else {
+                    visitor.visit_none()
+                }
+            })
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_unit()
+    }
+
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_unit()
+    }
+
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_seq<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        )))??;
+
+        let buf = TlvReader::new(buf.as_slice());
+
+        visitor.visit_seq(buf)
+    }
+
+    fn deserialize_tuple<V>(mut self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        )))??;
+
+        let buf = TlvReader::new(buf.as_slice());
+
+        visitor.visit_seq(buf)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        mut self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        )))??;
+
+        let buf = TlvReader::new(buf.as_slice());
+
+        visitor.visit_seq(buf)
+    }
+
+    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unimplemented!()
+    }
+
+    fn deserialize_struct<V>(
+        mut self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        )))??;
+
+        let buf = TlvReader::new(buf.as_slice());
+
+        visitor.visit_seq(buf)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unimplemented!()
+    }
+
+    fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unimplemented!()
+    }
+
+    fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        unimplemented!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use serde::de::Deserialize;
+    use serde::ser::Serialize;
     use std::io::{Cursor, Write};
     use std::iter;
 
@@ -192,19 +523,19 @@ mod tests {
     }
 
     #[test]
-    fn tlv_reader_usize() {
+    fn tlv_reader_deserialize_u64() {
         let cursor = Cursor::new(Vec::<u8>::new());
 
-        let input = 2533;
-        let mut tlv_writer = TlvWriter::new(cursor);
+        let input = 2533u64;
 
-        tlv_writer.write_usize(input).unwrap();
+        let mut tlv_writer = TlvWriter::new(cursor);
+        input.serialize(&mut tlv_writer).unwrap();
 
         let mut cursor = tlv_writer.into_inner();
         cursor.set_position(0);
 
-        let mut tlv_reader = TlvReader::new(cursor);
-        let output = tlv_reader.read_usize().unwrap();
+        let tlv_reader = TlvReader::new(cursor);
+        let output = Deserialize::deserialize(tlv_reader).unwrap();
 
         assert_eq!(input, output);
     }
