@@ -1,3 +1,5 @@
+use crate::Error;
+
 use std::io::{self, Write};
 
 /// Optionally consumes an implementation of [`io::Write`], and provides an adapter to convert
@@ -25,7 +27,7 @@ where
 
     /// Convert the provided slice of bytes to TLV format, output the result to the provided
     /// writer, and return the amount of bytes written.
-    pub fn bytes_to_writer(writer: W, buf: &[u8]) -> Result<usize, io::Error> {
+    pub fn bytes_to_writer(writer: W, buf: &[u8]) -> Result<usize, Error> {
         let mut writer = writer;
         let mut buf_len = buf.len();
 
@@ -52,18 +54,18 @@ where
 
         writer.write(&[0xf0 | len_mask])?;
         writer.write(&len[..len_mask as usize])?;
-        writer.write(buf)
+        Ok(writer.write(buf)?)
     }
 
     /// Append the provided usize to the writer in TLV format
-    pub fn write_usize(&mut self, n: usize) -> Result<usize, io::Error> {
+    pub fn write_usize(&mut self, n: usize) -> Result<usize, Error> {
         let n = n.to_le_bytes();
 
         TlvWriter::bytes_to_writer(&mut self.writer, &n[..])
     }
 
     /// Write a list of serializable items
-    pub fn write_list<L: AsRef<[u8]>>(&mut self, list: &[L]) -> Result<usize, io::Error> {
+    pub fn write_list<L: AsRef<[u8]>>(&mut self, list: &[L]) -> Result<usize, Error> {
         let buf: Vec<u8> = vec![];
         let mut writer = TlvWriter::new(buf);
 
@@ -72,7 +74,7 @@ where
         }
 
         let buf = writer.into_inner();
-        self.write(buf.as_slice())
+        Ok(self.write(buf.as_slice())?)
     }
 }
 
@@ -84,7 +86,7 @@ where
     /// [`TlvWriter::bytes_to_writer`]. Therefore, the provided buffer will first be converted to
     /// TLV format, and then sent to the inner writer.
     fn write(&mut self, buf: &[u8]) -> Result<usize, io::Error> {
-        TlvWriter::bytes_to_writer(&mut self.writer, buf)
+        TlvWriter::bytes_to_writer(&mut self.writer, buf).map_err(|e| e.into())
     }
 
     /// The [`io::Write::flush`] implementation will just forward the call to the inner writer.

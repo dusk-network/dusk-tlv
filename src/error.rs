@@ -49,4 +49,12 @@ impl SerdeError for Error {
     }
 }
 
+impl Into<io::Error> for Error {
+    fn into(self) -> io::Error {
+        match self {
+            Error::Io(e) => e,
+        }
+    }
+}
+
 from_error!(io::Error, Io);

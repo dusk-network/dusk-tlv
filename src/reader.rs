@@ -1,3 +1,5 @@
+use crate::Error;
+
 use std::io::{self, Read};
 
 /// Optionally consumes an implementation of [`Read`], and fetch n payloads in TLV format from it.
@@ -29,7 +31,7 @@ where
     ///
     /// The function will effectively read the bytes to fetch the length, so the reader will be
     /// pointing to the begining of the payload after the call.
-    pub fn reader_to_tlv_len(reader: R) -> Result<usize, io::Error> {
+    pub fn reader_to_tlv_len(reader: R) -> Result<usize, Error> {
         let mut reader = reader;
 
         // The first byte defines the type
@@ -54,7 +56,7 @@ where
 
     /// From an implementation of [`Read`], fetch the type, length and write the value to the
     /// provided buf.
-    pub fn read_slice(reader: R, buf: &mut [u8]) -> Result<usize, io::Error> {
+    pub fn read_slice(reader: R, buf: &mut [u8]) -> Result<usize, Error> {
         let mut reader = reader;
 
         let tlv_len = TlvReader::reader_to_tlv_len(&mut reader)?;
@@ -62,10 +64,10 @@ where
         // If the provided length is bigger than the buffer, then the provided buffer cannot
         // contain all the bytes. This verification prevents inconsistent data.
         if buf.len() < tlv_len as usize {
-            return Err(io::Error::new(
+            return Err(Error::Io(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "The buffer is not big enough",
-            ));
+            )));
         }
 
         // Grant we take all the bytes informed by the type from the reader
@@ -76,7 +78,7 @@ where
     }
 
     /// Read a TLV format serialized `usize` from the provided reader
-    pub fn read_usize(&mut self) -> Result<usize, io::Error> {
+    pub fn read_usize(&mut self) -> Result<usize, Error> {
         let mut n = 0usize.to_le_bytes();
 
         TlvReader::read_slice(&mut self.reader, &mut n[..])?;
@@ -85,11 +87,11 @@ where
     }
 
     /// Read a list of serializable items from the provided reader
-    pub fn read_list<L: From<Vec<u8>>>(&mut self) -> Result<Vec<L>, io::Error> {
-        let buf = self.next().ok_or(io::Error::new(
+    pub fn read_list<L: From<Vec<u8>>>(&mut self) -> Result<Vec<L>, Error> {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
             io::ErrorKind::UnexpectedEof,
             "Not enough bytes to read the list from the TLV format",
-        ))??;
+        )))??;
 
         let mut list = vec![];
         for item in TlvReader::new(buf.as_slice()) {
@@ -114,7 +116,7 @@ impl<R> Iterator for TlvReader<R>
 where
     R: io::Read,
 {
-    type Item = Result<Vec<u8>, io::Error>;
+    type Item = Result<Vec<u8>, Error>;
 
     /// Since we are dealing with I/O, the iterator itself is error-prone. Therefore, the item must
     /// be a [`Result`].
@@ -122,7 +124,7 @@ where
     /// If the function fails to read the TLV type/length, then it will return [`None`].
     ///
     /// If the type/length is successfully read but we have an I/O error, the function will return a
-    /// [`Some(io::Error)`]
+    /// [`Some(Error)`]
     ///
     /// Otherwise, the payload of the TLV will be returned
     fn next(&mut self) -> Option<Self::Item> {
@@ -135,16 +137,16 @@ where
 
         let reader = &mut self.reader;
         let mut reader = reader.take(tlv_len as u64);
-        let bytes = match reader.read_to_end(&mut v) {
+        let bytes = match reader.read_to_end(&mut v).map_err(|e| e.into()) {
             Ok(b) => b,
             Err(e) => return Some(Err(e)),
         };
 
         if bytes < tlv_len {
-            return Some(Err(io::Error::new(
+            return Some(Err(Error::Io(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "The reader didnt provide enough bytes for the TLV decoding",
-            )));
+            ))));
         }
 
         Some(Ok(v))
