@@ -9,3 +9,4 @@ readme = "README.md"
 license = "MPL-2.0"
 
 [dependencies]
+serde = "1.0"
