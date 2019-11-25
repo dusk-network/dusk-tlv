@@ -547,15 +547,11 @@ mod tests {
         let input = vec![2558usize, 21, 37, 2009];
         let mut tlv_writer = TlvWriter::new(cursor);
 
-        tlv_writer
-            .write_list(
-                input
-                    .iter()
-                    .map(|i| i.to_le_bytes())
-                    .collect::<Vec<[u8; 8]>>()
-                    .as_slice(),
-            )
-            .unwrap();
+        let list = input
+            .iter()
+            .map(|i| i.to_le_bytes())
+            .collect::<Vec<[u8; 8]>>();
+        tlv_writer.write_list(list.as_slice()).unwrap();
 
         let mut cursor = tlv_writer.into_inner();
         cursor.set_position(0);

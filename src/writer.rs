@@ -17,15 +17,16 @@ macro_rules! implemented_ser_trait_unimplemented {
             type Ok = ();
             type Error = Error;
 
-            fn $m<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
+            fn $m<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
             where
                 T: Serialize,
             {
-                unimplemented!()
+                let r: &mut TlvWriter<W> = *self;
+                value.serialize(r)
             }
 
             fn end(self) -> Result<Self::Ok, Self::Error> {
-                unimplemented!()
+                Ok(())
             }
         }
     };
@@ -181,7 +182,26 @@ where
     }
 }
 
-implemented_ser_trait_unimplemented!(SerializeSeq, serialize_element);
+impl<'a, W> SerializeSeq for &mut TlvWriter<W>
+where
+    W: io::Write,
+{
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: Serialize,
+    {
+        let r: &mut TlvWriter<W> = *self;
+        value.serialize(r)
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+}
+
 implemented_ser_trait_unimplemented!(SerializeTuple, serialize_element);
 implemented_ser_trait_unimplemented!(SerializeTupleStruct, serialize_field);
 implemented_ser_trait_unimplemented!(SerializeTupleVariant, serialize_field);
