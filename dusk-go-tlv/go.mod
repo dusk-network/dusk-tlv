@@ -1,4 +1,4 @@
-module github.com/dusk-network/dusk-go-tlv
+module github.com/dusk-network/dusk-tlv/dusk-go-tlv
 
 go 1.13
 

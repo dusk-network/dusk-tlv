@@ -28,7 +28,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dusk-network/dusk-go-tlv/pkg/core/tlv"
+	"github.com/dusk-network/dusk-tlv/dusk-go-tlv"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 	fmt.Printf("%#x\n", fetchedBytes)
 
 	_, err := tlv.ReaderToBytes(bytesBuffer)
-	// Error: EOF
+	// Expected error: EOF
 	if err != nil {
 		fmt.Println(err)
 	}
