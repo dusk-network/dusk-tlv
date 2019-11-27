@@ -27,3 +27,21 @@ func TestTlvReaderToBytes(t *testing.T) {
 
 	assert.Equal(t, buf, fetch)
 }
+
+func TestTlvReaderToList(t *testing.T) {
+	list := [][]uint8{[]byte{0x15, 0xff}, []byte{0x20}, []byte{0x30}, []byte{0x40}}
+
+	bb := bytes.NewBuffer([]byte{})
+	tl := NewWriter(bb)
+	_, err := tl.WriteList(list)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+    fetch, err := ReaderToList(bb)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	assert.Equal(t, list, fetch)
+}

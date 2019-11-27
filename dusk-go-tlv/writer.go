@@ -1,6 +1,7 @@
 package tlv
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -46,4 +47,21 @@ func (t *Writer) Write(p []byte) (int, error) {
 
 	// Write the payload
 	return t.w.Write(p)
+}
+
+// WriteList will serialize a list in TLV format and output it to the inner writer
+func (t *Writer) WriteList(l [][]byte) (int, error) {
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	tlvWriter := NewWriter(bytesBuffer)
+	n := 0
+
+	for i := 0; i < len(l); i++ {
+		ni, err := tlvWriter.Write(l[i])
+		if err != nil {
+			return 0, err
+		}
+		n += ni
+	}
+
+	return t.Write(bytesBuffer.Bytes())
 }

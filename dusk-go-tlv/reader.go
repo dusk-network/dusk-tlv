@@ -1,6 +1,7 @@
 package tlv
 
 import (
+    "bytes"
 	"encoding/binary"
 	"io"
 )
@@ -37,4 +38,25 @@ func ReaderToBytes(r io.Reader) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+// ReaderToList will extract a TLV-formatted list from an implementation of io.Read
+func ReaderToList(r io.Reader) ([][]byte, error) {
+    list := make([][]byte, 0)
+
+    buf, err := ReaderToBytes(r)
+	if err != nil {
+        return nil, err
+	}
+
+	bb := bytes.NewBuffer(buf)
+    var b []byte
+    for err == nil {
+        b, err = ReaderToBytes(bb)
+        if err == nil {
+            list = append(list, b)
+        }
+    }
+
+    return list, nil
 }
