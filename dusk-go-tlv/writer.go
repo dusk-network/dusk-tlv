@@ -16,8 +16,13 @@ func NewWriter(w io.Writer) Writer {
 	return Writer{w: w}
 }
 
-// Write will encode the provided bytes into TLV format, and then write the result to the inner writer.
+// Write will call the inner Write function to output p in TLV format.
 func (t *Writer) Write(p []byte) (int, error) {
+	return Write(t.w, p)
+}
+
+// Write will encode the provided bytes into TLV format, and then write the result to the inner writer.
+func Write(w io.Writer, p []byte) (int, error) {
 	// Transform platform dependent int to uint64
 	l := uint64(len(p))
 
@@ -34,23 +39,28 @@ func (t *Writer) Write(p []byte) (int, error) {
 
 	// Apply the var length mask and write the type
 	tlvF := uint8(0xf0 | m)
-	_, err := t.w.Write([]byte{tlvF})
+	_, err := w.Write([]byte{tlvF})
 	if err != nil {
 		return 0, err
 	}
 
 	// Write the length
-	_, err = t.w.Write(tlvL[:m])
+	_, err = w.Write(tlvL[:m])
 	if err != nil {
 		return 0, err
 	}
 
 	// Write the payload
-	return t.w.Write(p)
+	return w.Write(p)
+}
+
+// WriteList will call the inner WriteList function to output a list in TLV format.
+func (t *Writer) WriteList(l [][]byte) (int, error) {
+	return WriteList(t.w, l)
 }
 
 // WriteList will serialize a list in TLV format and output it to the inner writer
-func (t *Writer) WriteList(l [][]byte) (int, error) {
+func WriteList(w io.Writer, l [][]byte) (int, error) {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	tlvWriter := NewWriter(bytesBuffer)
 	n := 0
@@ -63,5 +73,5 @@ func (t *Writer) WriteList(l [][]byte) (int, error) {
 		n += ni
 	}
 
-	return t.Write(bytesBuffer.Bytes())
+	return Write(w, bytesBuffer.Bytes())
 }
