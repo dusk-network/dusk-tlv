@@ -1,5 +1,6 @@
 use crate::Error;
 
+use std::convert::TryFrom;
 use std::io::{self, Read};
 
 use serde::de::{DeserializeSeed, Deserializer, SeqAccess, Visitor};
@@ -90,6 +91,22 @@ where
         for item in TlvReader::new(buf.as_slice()) {
             let item = item?;
             list.push(L::from(item));
+        }
+
+        Ok(list)
+    }
+
+    /// Read a list of falible serializable items from the provided reader
+    pub fn try_read_list<L: TryFrom<Vec<u8>, Error = Error>>(&mut self) -> Result<Vec<L>, Error> {
+        let buf = self.next().ok_or(Error::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Not enough bytes to read the list from the TLV format",
+        )))??;
+
+        let mut list = vec![];
+        for item in TlvReader::new(buf.as_slice()) {
+            let item = item?;
+            list.push(L::try_from(item)?);
         }
 
         Ok(list)

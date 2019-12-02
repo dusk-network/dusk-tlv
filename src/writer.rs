@@ -1,5 +1,6 @@
 use crate::Error;
 
+use std::convert::TryInto;
 use std::io::{self, Write};
 
 use serde::ser::{
@@ -158,6 +159,23 @@ where
 
         for item in list {
             writer.write(item.as_ref())?;
+        }
+
+        let buf = writer.into_inner();
+        Ok(self.write(buf.as_slice())?)
+    }
+
+    /// Write a list of falible serializable items
+    pub fn try_write_list<L: Clone + TryInto<Vec<u8>, Error = Error>>(
+        &mut self,
+        list: &[L],
+    ) -> Result<usize, Error> {
+        let buf: Vec<u8> = vec![];
+        let mut writer = TlvWriter::new(buf);
+
+        for item in list {
+            let v: Vec<u8> = item.clone().try_into()?;
+            writer.write(v.as_slice())?;
         }
 
         let buf = writer.into_inner();

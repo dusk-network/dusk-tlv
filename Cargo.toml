@@ -1,6 +1,6 @@
 [package]
 name = "dusk-tlv"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Victor Lopez <victor@dusk.network>"]
 edition = "2018"
 homepage = "https://dusk-network.github.io/dusk-tlv/dusk_tlv/index.html"
